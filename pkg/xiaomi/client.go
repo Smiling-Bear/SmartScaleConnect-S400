@@ -20,6 +20,8 @@ type Client struct {
 	ssecurity []byte // for encryption
 	passToken string
 	region    string // for regional API (de, ru, sg, us, i2)
+
+	auth map[string]string // for multi-step auth (captcha, 2FA)
 }
 
 func NewClient(app string) *Client {
