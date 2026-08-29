@@ -76,7 +76,7 @@ func (c *Client) getAllWeights(region string) ([]*core.Weight, error) {
 
 			var res2 struct {
 				BasalMetabolism  int     `json:"basal_metabolism"`   // S400, Eight
-				BMI              float32 `json:"bmi"`                // S400, Eight
+				BMI              any     `json:"bmi"`                // S400, Eight
 				BodyAge          int     `json:"body_age"`           // S400, Eight
 				BodyFatRate      float32 `json:"body_fat_rate"`      // S400, Eight
 				BodyMoistureMass float32 `json:"body_moisture_mass"` // S400, Eight
@@ -96,7 +96,7 @@ func (c *Client) getAllWeights(region string) ([]*core.Weight, error) {
 				StandardWeightV2 float32 `json:"standard_weight_v2"` // S400, Eight
 				Time             int     `json:"time"`               // S400, Eight
 				VisceralFat      float32 `json:"visceral_fat"`       // S400, Eight
-				Weight           float32 `json:"weight"`             // S400, Eight
+				Weight           any     `json:"weight"`             // S400, Eight
 				WeightControl    float32 `json:"weight_control"`     // S400, Eight
 				Whr              float32 `json:"whr"`                // S400, Eight
 
@@ -142,11 +142,11 @@ func (c *Client) getAllWeights(region string) ([]*core.Weight, error) {
 
 			w := &core.Weight{
 				Date:      time.Unix(int64(res2.Time), 0), // 1732550224
-				Weight:    res2.Weight,                    // 69.8
-				BMI:       res2.BMI,                       // 23.6
-				BodyFat:   res2.BodyFatRate,               // 19.6
-				BodyWater: res2.MoistureRate,              // 51
-				BoneMass:  res2.BoneMass,                  // 2.8
+				Weight:    parseAnyFloat(res2.Weight),
+				BMI:       parseAnyFloat(res2.BMI),
+				BodyFat:   res2.BodyFatRate,  // 19.6
+				BodyWater: res2.MoistureRate, // 51
+				BoneMass:  res2.BoneMass,     // 2.8
 
 				MetabolicAge: res2.BodyAge,    // 36
 				MuscleMass:   res2.MuscleMass, // 53.3
@@ -325,23 +325,23 @@ func unmarshalScaleData(data []byte, weights *[]*core.Weight) (ts int64, err err
 		switch v1.FromSource {
 		case 1:
 			var v2 struct {
-				Weight    float32 `json:"weight"` // 87.8 kg
-				BMI       float32 `json:"bmi"`    // 25.7 points
-				BodyFat   float32 `json:"bfp"`    // 22.9 %
-				BodyWater float32 `json:"bwp"`    // 58.8 %
-				BoneMass  float32 `json:"bmc"`    // 3.7 kg
+				Weight    any `json:"weight"` // 87.8 kg
+				BMI       any `json:"bmi"`    // 25.7 points
+				BodyFat   any `json:"bfp"`    // 22.9 %
+				BodyWater any `json:"bwp"`    // 58.8 %
+				BoneMass  any `json:"bmc"`    // 3.7 kg
 
-				MetabolicAge int     `json:"ma"`  // 55 years
-				MuscleMass   float32 `json:"slm"` // 63.9 kg
-				BodyType     int     `json:"bt"`  // 4
-				ProteinMass  float32 `json:"pm"`  // 11.6 kg
-				VisceralFat  int     `json:"vfl"` // 9 points
+				MetabolicAge any `json:"ma"`  // 55 years
+				MuscleMass   any `json:"slm"` // 63.9 kg
+				BodyType     any `json:"bt"`  // 4
+				ProteinMass  any `json:"pm"`  // 11.6 kg
+				VisceralFat  any `json:"vfl"` // 9 points
 
-				BMR                int     `json:"bmr"`        // 1832 kcal
-				BodyScore          int     `json:"sbc"`        // 80 points
-				HeartRate          int     `json:"heartRate"`  // 73 bpm
-				SkeletalMuscleMass float32 `json:"smm"`        // 37.6 kg
-				ReportFrom         string  `json:"reportFrom"` // Regular
+				BMR                any    `json:"bmr"`        // 1832 kcal
+				BodyScore          any    `json:"sbc"`        // 80 points
+				HeartRate          any    `json:"heartRate"`  // 73 bpm
+				SkeletalMuscleMass any    `json:"smm"`        // 37.6 kg
+				ReportFrom         string `json:"reportFrom"` // Regular
 
 				//UserID             int     `json:"miid"`       // 1234567890
 				//Duid               int     `json:"duid"`       // 6 ?
@@ -385,24 +385,22 @@ func unmarshalScaleData(data []byte, weights *[]*core.Weight) (ts int64, err err
 
 			// v2.Time has bugs. For "UserEditor" it has seconds, for Claimed it has milliseconds
 			w := &core.Weight{
-				Date:      time.UnixMilli(v1.CreateTime),
-				Weight:    v2.Weight,
-				BMI:       v2.BMI,
-				BodyFat:   v2.BodyFat,
-				BodyWater: v2.BodyWater,
-				BoneMass:  v2.BoneMass,
-
-				MetabolicAge:   v2.MetabolicAge,
-				MuscleMass:     v2.MuscleMass,
-				PhysiqueRating: v2.BodyType,
-				ProteinMass:    v2.ProteinMass,
-				VisceralFat:    v2.VisceralFat,
-
-				BasalMetabolism:    v2.BMR,
-				BodyScore:          v2.BodyScore,
-				HeartRate:          v2.HeartRate,
+				Date:               time.UnixMilli(v1.CreateTime),
+				Weight:             parseAnyFloat(v2.Weight),
+				BMI:                parseAnyFloat(v2.BMI),
+				BodyFat:            parseAnyFloat(v2.BodyFat),
+				BodyWater:          parseAnyFloat(v2.BodyWater),
+				BoneMass:           parseAnyFloat(v2.BoneMass),
+				MetabolicAge:       parseAnyInt(v2.MetabolicAge),
+				MuscleMass:         parseAnyFloat(v2.MuscleMass),
+				PhysiqueRating:     parseAnyInt(v2.BodyType),
+				ProteinMass:        parseAnyFloat(v2.ProteinMass),
+				VisceralFat:        parseAnyInt(v2.VisceralFat),
+				BasalMetabolism:    parseAnyInt(v2.BMR),
+				BodyScore:          parseAnyInt(v2.BodyScore),
+				HeartRate:          parseAnyInt(v2.HeartRate),
 				Height:             parseAnyFloat(v2.User.Height),
-				SkeletalMuscleMass: v2.SkeletalMuscleMass,
+				SkeletalMuscleMass: parseAnyFloat(v2.SkeletalMuscleMass),
 
 				User:   v2.User.Name,
 				Source: v2.ReportFrom,
@@ -701,22 +699,21 @@ func (c *Client) Equal(w1, w2 *core.Weight) bool {
 		equalFloat(w1.ProteinMass, w2.ProteinMass)
 }
 
-
 // JSON structure for Mi Fitness data
 type miFitnessValue struct {
-	Time             int64   `json:"time"`
-	Weight           float32 `json:"weight"`
-	BMI              float32 `json:"bmi,omitempty"`
-	BodyFatRate      float32 `json:"body_fat_rate,omitempty"`
-	MoistureRate     float32 `json:"moisture_rate,omitempty"`
-	BoneMass         float32 `json:"bone_mass,omitempty"`
-	BodyAge          int     `json:"body_age,omitempty"`
-	MuscleMass       float32 `json:"muscle_mass,omitempty"`
-	ProteinMass      float32 `json:"protein_mass,omitempty"`
-	VisceralFat      float32 `json:"visceral_fat,omitempty"`
-	BasalMetabolism  int     `json:"basal_metabolism,omitempty"`
-	BodyScore        int     `json:"body_score,omitempty"`
-	BPM              int     `json:"bpm,omitempty"`
+	Time               int64   `json:"time"`
+	Weight             any     `json:"weight"`
+	BMI                float32 `json:"bmi,omitempty"`
+	BodyFatRate        float32 `json:"body_fat_rate,omitempty"`
+	MoistureRate       float32 `json:"moisture_rate,omitempty"`
+	BoneMass           float32 `json:"bone_mass,omitempty"`
+	BodyAge            int     `json:"body_age,omitempty"`
+	MuscleMass         float32 `json:"muscle_mass,omitempty"`
+	ProteinMass        float32 `json:"protein_mass,omitempty"`
+	VisceralFat        float32 `json:"visceral_fat,omitempty"`
+	BasalMetabolism    int     `json:"basal_metabolism,omitempty"`
+	BodyScore          int     `json:"body_score,omitempty"`
+	BPM                int     `json:"bpm,omitempty"`
 	SkeletalMuscleMass float32 `json:"skeletal_muscle_mass,omitempty"`
 }
 
